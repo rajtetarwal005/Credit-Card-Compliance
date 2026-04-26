@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Credit Card Compliance Checker</title>
+</head>
+<body>
+
+    <h2>Credit Card Compliance Checker</h2>
+
+    <form id="form">
+        <input name="interest_rate" placeholder="Interest Rate (%)" required><br><br>
+        <input name="late_fee" placeholder="Late Fee (₹)" required><br><br>
+        <input name="annual_fee" placeholder="Annual Fee (₹)" required><br><br>
+        <input name="billing_cycle" placeholder="Billing Cycle (days)" required><br><br>
+        <input name="min_payment" placeholder="Minimum Payment (%)" required><br><br>
+
+        <label>Disclosure Provided:</label>
+        <select name="disclosure">
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+        </select><br><br>
+
+        <button type="submit">Check Compliance</button>
+    </form>
+
+    <h3 id="result"></h3>
+
+    <script>
+        document.getElementById("form").onsubmit = async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            // Convert values to numbers
+            for (let key in data) {
+                data[key] = Number(data[key]);
+            }
+
+            const response = await fetch("http://127.0.0.1:8000/predict", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            document.getElementById("result").innerText =
+                `${result.prediction} (${result.confidence}%)`;
+        };
+    </script>
+
+</body>
+</html>
