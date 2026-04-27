@@ -6,4 +6,4 @@ class CardInput(BaseModel):
     annual_fee: float
     billing_cycle: int
     min_payment: float
-    disclosure: int  # 1 = Yes, 0 = No
+    disclosure: int

@@ -1,56 +1,185 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Credit Card Compliance Checker</title>
+<meta charset="UTF-8">
+<title>Credit Card Compliance Checker</title>
+
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "San Francisco", Arial;
+        background: #f5f5f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .container {
+        background: white;
+        padding: 30px;
+        border-radius: 20px;
+        width: 380px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+
+    h2 {
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+
+    .subtitle {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    input, select {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    input:focus, select:focus {
+        border-color: #0071e3;
+        box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+    }
+
+    button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 15px;
+        border-radius: 12px;
+        border: none;
+        background: #0071e3;
+        color: white;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    button:hover {
+        background: #005bb5;
+    }
+
+    .result {
+        margin-top: 20px;
+        font-size: 16px;
+        font-weight: 500;
+    }
+
+    .compliant {
+        color: #28a745;
+    }
+
+    .non-compliant {
+        color: #dc3545;
+    }
+
+</style>
 </head>
+
 <body>
 
-    <h2>Credit Card Compliance Checker</h2>
+<div class="container">
+
+    <h2>Credit Card Checker</h2>
+    <div class="subtitle">Instant compliance analysis using ML</div>
 
     <form id="form">
-        <input name="interest_rate" placeholder="Interest Rate (%)" required><br><br>
-        <input name="late_fee" placeholder="Late Fee (₹)" required><br><br>
-        <input name="annual_fee" placeholder="Annual Fee (₹)" required><br><br>
-        <input name="billing_cycle" placeholder="Billing Cycle (days)" required><br><br>
-        <input name="min_payment" placeholder="Minimum Payment (%)" required><br><br>
+        <input name="interest_rate" placeholder="Interest Rate (%)" required>
+        <input name="late_fee" placeholder="Late Fee (₹)" required>
+        <input name="annual_fee" placeholder="Annual Fee (₹)" required>
+        <input name="billing_cycle" placeholder="Billing Cycle (days)" required>
+        <input name="min_payment" placeholder="Minimum Payment (%)" required>
 
-        <label>Disclosure Provided:</label>
         <select name="disclosure">
-            <option value="1">Yes</option>
-            <option value="0">No</option>
-        </select><br><br>
+            <option value="1">Disclosure Provided (Yes)</option>
+            <option value="0">Disclosure Provided (No)</option>
+        </select>
 
         <button type="submit">Check Compliance</button>
     </form>
 
-    <h3 id="result"></h3>
+    <div id="result" class="result"></div>
 
-    <script>
-        document.getElementById("form").onsubmit = async (e) => {
-            e.preventDefault();
+</div>
 
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
+<script>
+document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
 
-            // Convert values to numbers
-            for (let key in data) {
-                data[key] = Number(data[key]);
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    for (let key in data) {
+        data[key] = Number(data[key]);
+    }
+
+    const resultDiv = document.getElementById("result");
+
+    try {
+        const response = await fetch("/predict", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        //  Handle validation errors
+        if (!response.ok) {
+            if (Array.isArray(result.detail)) {
+                resultDiv.innerHTML = `
+                    <div style="color:red; text-align:left;">
+                        <b>Validation Errors:</b>
+                        <ul>
+                            ${result.detail.map(err => `<li>${err}</li>`).join("")}
+                        </ul>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `<span style="color:red">${result.detail}</span>`;
             }
+            return;
+        }
 
-            const response = await fetch("http://127.0.0.1:8000/predict", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(data)
-            });
+        //  Show prediction
+        let html = "";
 
-            const result = await response.json();
+        if (result.prediction === "Compliant") {
+            html += `<div class="compliant">✔ ${result.prediction} (${result.confidence}%)</div>`;
+        } else {
+            html += `<div class="non-compliant">✖ ${result.prediction} (${result.confidence}%)</div>`;
+        }
 
-            document.getElementById("result").innerText =
-                `${result.prediction} (${result.confidence}%)`;
-        };
-    </script>
+        //  Show explanation (reasons)
+        if (result.reasons && result.reasons.length > 0) {
+            html += `
+                <div style="margin-top:10px; text-align:left;">
+                    <b>Reasons:</b>
+                    <ul>
+                        ${result.reasons.map(r => `<li>${r}</li>`).join("")}
+                    </ul>
+                </div>
+            `;
+        }
+
+        resultDiv.innerHTML = html;
+
+    } catch (error) {
+        resultDiv.innerHTML = `<span style="color:red">Something went wrong</span>`;
+    }
+};
+</script>
 
 </body>
 </html>
