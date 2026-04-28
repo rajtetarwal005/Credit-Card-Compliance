@@ -48,5 +48,5 @@ def predict(data: CardInput):
     return {
         "prediction": "Compliant" if prediction == 1 else "Non-Compliant",
         "confidence": round(probability * 100, 2),
-        "reasons": get_explanation(data)
+        "reasons": get_explanation(data) if prediction == 0 else []
     }
